@@ -1,10 +1,14 @@
 import React from 'react';
+import * as tf from '@tensorflow/tfjs';
 import './App.css';
 import { Game } from './gomoku/game';
-import { DummyAgent } from './gomoku/agent';
+import { DeepAgent } from './gomoku/agent';
 //mport { train } from './engine/engine';
 
+
+
 const App: React.FC = () => {
+
   return (
     <div className="App">
       
@@ -61,9 +65,13 @@ class GameComponent extends React.Component<any, any> {
         }
       ],
       stepNumber: 0,
-      player2Agent: new DummyAgent(),
     };
     this.triggerPlayer2Agent = this.triggerPlayer2Agent.bind(this);
+
+    tf.loadLayersModel('http://localhost:3000/model/model.json').then(model => {
+      this.setState({ player2Agent: new DeepAgent(model, 0), })
+    });
+
   }
 
   handleClick(i: number) {
@@ -108,6 +116,10 @@ class GameComponent extends React.Component<any, any> {
   }
 
   render() {
+
+    if (!this.state.player2Agent) {
+      return (<div>Loading game policy model</div>);
+    }
 
     const history = this.state.history;
     const current = history[this.state.stepNumber];
