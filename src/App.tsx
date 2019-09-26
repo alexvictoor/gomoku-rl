@@ -78,8 +78,8 @@ class GameComponent extends React.Component<any, any> {
     this.updateGameState(player1Turn, i, newGame, this.triggerPlayer2Agent);
   }
 
-  triggerPlayer2Agent(currentGame: Game) {
-    const newGame: Game = this.state.player2Agent.play(currentGame);
+  async triggerPlayer2Agent(currentGame: Game) {
+    const newGame: Game = await this.state.player2Agent.play(currentGame);
     if (!currentGame.isOver()) {
       this.updateGameState(false, newGame.lastPlay, newGame);
     }
