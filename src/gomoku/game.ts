@@ -181,7 +181,7 @@ export class Game {
            [-4, -3, -2, -1, 0, 1, 2, 3, 4],
            [-4 * size, -3 * size, -2 * size, -1 * size, 0, size, 2 * size, 3 * size, 4 * size],
            [-4 * (size+1), -3 * (size+1), -2 * (size+1), -1 * (size+1), 0, (size+1), 2 * (size+1), 3 * (size+1), 4 * (size+1)],
-           [-4 * (size-1), -3 * (size-1), -2 * (size-1), -1 * (size-1), 0, (size-1), 2 * (size-1), 3 * (size+1), 4 * (size+1)],
+           [-4 * (size-1), -3 * (size-1), -2 * (size-1), -1 * (size-1), 0, (size-1), 2 * (size-1), 3 * (size-1), 4 * (size-1)],
         ]
     }
 

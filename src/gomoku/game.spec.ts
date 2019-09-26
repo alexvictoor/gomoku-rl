@@ -93,6 +93,15 @@ describe('Gomoku', () => {
         // then
         expect(gameAfterPlay.status).toBe('Player1 Wins');
     })
+    it('should be won again', () => {
+        // given
+        const board = 'oooo. ...x. ..x.. .x... x....';;
+        const game = Game.fromString(board);
+        // when
+        const gameAfterPlay = game.play(4)
+        // then
+        expect(gameAfterPlay.status).toBe('Player1 Wins');
+    })
 
     xit('should be draw', () => {
         // given
