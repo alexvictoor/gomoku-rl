@@ -1,5 +1,5 @@
 import * as tf from '@tensorflow/tfjs-node';
-import { Game, Player } from './game';
+import { Game, Player, getAdviceAction } from './game';
 import { predictBestAction, learnQualityFromReward, learnQualityFromNextGame } from './tensorflow';
 import { ExperienceReplayBuffer } from './experience-replay';
 
@@ -17,6 +17,28 @@ export class DummyAgent implements Agent {
         }
         return game.play(indices[0]);
     }
+
+    startNewGame() {}
+}
+
+export class NaiveAgent implements Agent {
+
+    async play(game: Game) {
+        const indices = game.whereToPlay();
+
+        if (indices.length === 0) {
+            //Game is already over
+            return game;
+        }
+        const advice = getAdviceAction(game);
+        if (advice) {
+            return game.play(advice);
+        }
+        const random = Math.floor(Math.random() * indices.length);
+        
+        return game.play(indices[random]);
+    }
+
 
     startNewGame() {}
 }

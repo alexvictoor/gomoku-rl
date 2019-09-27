@@ -2,7 +2,7 @@ import React from 'react';
 import * as tf from '@tensorflow/tfjs';
 import './App.css';
 import { Game } from './gomoku/game';
-import { DeepAgent } from './gomoku/agent';
+import { DeepAgent, NaiveAgent } from './gomoku/agent';
 //mport { train } from './engine/engine';
 
 
@@ -65,12 +65,13 @@ class GameComponent extends React.Component<any, any> {
         }
       ],
       stepNumber: 0,
+      player2Agent: new NaiveAgent(),
     };
     this.triggerPlayer2Agent = this.triggerPlayer2Agent.bind(this);
 
-    tf.loadLayersModel('http://localhost:3000/model/model.json').then(model => {
+    /*tf.loadLayersModel('http://localhost:3000/model/model.json').then(model => {
       this.setState({ player2Agent: new DeepAgent(model, 0), })
-    });
+    });*/
 
   }
 

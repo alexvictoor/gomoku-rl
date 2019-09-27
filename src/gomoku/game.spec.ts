@@ -1,4 +1,4 @@
-import { Game } from './game';
+import { Game, findWinningAction, getAdviceAction, findNonDangerousActionCombos } from './game';
 
 describe('Gomoku', () => {
 
@@ -160,6 +160,58 @@ describe('Gomoku', () => {
         const data = game.asNumberArray();
         // then
         expect(data).toEqual([[1, 0, 0], [1, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1], [0, 1, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0]]);
+    })
+
+    it('should find action that gives victory right away', () => {
+        // given
+        const board = 'oooo. ...x. ..x.. .x... x....';;
+        const game = Game.fromString(board);
+        // when
+        const action = findWinningAction(game);
+        // then
+        expect(action).toEqual(4);
+    })
+
+    it('should advice not to loose next turn', () => {
+        // given
+        const board = 'ooo.. ...x. ..x.. .x... x....';;
+        const game = Game.fromString(board);
+        // when
+        const advice = getAdviceAction(game);
+        // then
+        expect(advice).toEqual(4);
+    })
+
+    it('should advice not to loose next next turn', () => {
+        // given
+        const board = '.oo... ...x.. ...x.. ..xx.. .x.o.. ......';;
+        const game = Game.fromString(board);
+        // when
+        const advice = getAdviceAction(game);
+        // then
+        expect(advice === 10 || advice === 30).toBeTruthy();
+    })
+
+
+
+    it.skip('should find action that will give victory in 2 turns', () => {
+        // given
+        const board = 'ooo... ...... ...x.. ..x... .x.... ......';;
+        const game = Game.fromString(board);
+        // when
+        const action = getAdviceAction(game);
+        // then
+        expect(action).toEqual(10);
+    })
+
+    it.skip('should counter action that will give victory in 2 turns', () => {
+        // given
+        const board = '........ ........ ...oo... ....xo.. ..ox.x.. ..x..... ........ ........';;
+        const game = Game.fromString(board);
+        // when
+        const action = getAdviceAction(game);
+        // then
+        expect(action).toEqual(10);
     })
 
 
