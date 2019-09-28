@@ -1,6 +1,6 @@
 import * as tf from '@tensorflow/tfjs';
 import { RewardExperience, RegularExperience } from "./experience";
-import { learnQualitiesFromRewards, learnQualitiesFromNextGames, learnQualitiesFromExperiences } from './tensorflow';
+import { learnQualitiesFromExperiences } from './tensorflow';
 
 
 export class ExperienceReplayBuffer {
@@ -11,8 +11,8 @@ export class ExperienceReplayBuffer {
     private largeRegularBuffer: RegularExperience[] = [];
    
     constructor(
-        private rewardBufferCapacity: number = 500, 
-        private regularBufferCapacity: number = 1000
+        private rewardBufferCapacity: number = 5000, 
+        private regularBufferCapacity: number = 100000
     ) {
 
     }
@@ -34,13 +34,15 @@ export class ExperienceReplayBuffer {
         }
       
         const rewardExperiences = [ ...this.rewardBuffer, ...this.largeRewardBuffer];
-        const regularExperiences = [ ...this.regularBuffer, ...this.largeRegularBuffer.slice(0, 100)];
+        const regularExperiences = [ ...this.regularBuffer, ...this.largeRegularBuffer.slice(0, 2000)];
         this.largeRewardBuffer.push(...this.rewardBuffer);
         this.largeRegularBuffer.push(...this.regularBuffer);
         tf.util.shuffle(this.largeRewardBuffer);
         tf.util.shuffle(this.largeRegularBuffer);
         this.rewardBuffer = [];
         this.regularBuffer = [];
+        await learnQualitiesFromExperiences(model, rewardExperiences, regularExperiences);
+        await learnQualitiesFromExperiences(model, rewardExperiences, regularExperiences);
         await learnQualitiesFromExperiences(model, rewardExperiences, regularExperiences);
     }
 

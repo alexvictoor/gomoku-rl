@@ -1,7 +1,7 @@
 import * as tf from '@tensorflow/tfjs-node';
 import { createModel } from './model';
 import { Game } from './game';
-import { DeepAgent } from './agent';
+import { DeepAgent, NaiveAgent } from './agent';
 import { ExperienceReplayBuffer } from './experience-replay';
 const train = async (size: number, episodes: number) => {
     let model;
@@ -21,8 +21,10 @@ const train = async (size: number, episodes: number) => {
     const initialGame = new Game(emptyBoard);
 
     const replayBuffer = new ExperienceReplayBuffer();
-    const firstAgent = new DeepAgent(model, 0.9, replayBuffer);
-    const secondAgent = new DeepAgent(model, 0.9, replayBuffer);
+    //const firstAgent = new DeepAgent(model, 0.5, replayBuffer);
+    const firstAgent = new NaiveAgent('Player1', replayBuffer);
+    const secondAgent = new NaiveAgent('Player2', replayBuffer);
+    //const secondAgent = new DeepAgent(model, 0.3, replayBuffer);
     const agents = [firstAgent, secondAgent];
     let i = 0;
     const gameOutcomes = {
@@ -45,14 +47,14 @@ const train = async (size: number, episodes: number) => {
         // learn to win or loose
         await firstAgent.play(game);
         await secondAgent.play(game);
-        if (i % 100 === 0) {
+        if (i % 5 === 0) {
             await replayBuffer.learnFromExperiences(model);
             console.log(gameOutcomes);
-            if (i % 1000 === 0) {
+            //if (i % 1000 === 0) {
                 await model.save('file:////Users/avictoor/work/ml/gomoku-rl/model');
-            }
-            firstAgent.explorationFactor = 0.9 * (episodes - i) / episodes;
-            secondAgent.explorationFactor = 0.9 * (episodes -i) / episodes;
+            //}
+            //firstAgent.explorationFactor = 0.5 * (episodes - i) / episodes;
+            //secondAgent.explorationFactor = 0.3 * (episodes -i) / episodes;
         }
         i++;
     }

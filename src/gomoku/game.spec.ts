@@ -1,4 +1,4 @@
-import { Game, findWinningAction, getAdviceAction, findNonDangerousActionCombos } from './game';
+import { Game, getAdviceAction } from './game';
 
 describe('Gomoku', () => {
 
@@ -157,19 +157,9 @@ describe('Gomoku', () => {
         const board = '... xox ...';
         const game = Game.fromString(board);
         // when
-        const data = game.asNumberArray();
+        const data = game.asNumberArray('Player2');
         // then
         expect(data).toEqual([[1, 0, 0], [1, 0, 0], [1, 0, 0], [0, 1, 0], [0, 0, 1], [0, 1, 0], [1, 0, 0], [1, 0, 0], [1, 0, 0]]);
-    })
-
-    it('should find action that gives victory right away', () => {
-        // given
-        const board = 'oooo. ...x. ..x.. .x... x....';;
-        const game = Game.fromString(board);
-        // when
-        const action = findWinningAction(game);
-        // then
-        expect(action).toEqual(4);
     })
 
     it('should advice not to loose next turn', () => {

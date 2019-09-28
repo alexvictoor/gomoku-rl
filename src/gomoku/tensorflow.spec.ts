@@ -3,7 +3,7 @@
  */
 
 import * as tf from '@tensorflow/tfjs-node';
-import { extractBestActionFromTensor, learnQualityFromReward, learnQualityFromNextGame, learnQualitiesFromRewards, learnQualitiesFromNextGames, learnQualitiesFromExperiences, extractQualityFromTensor } from "./tensorflow";
+import { extractBestActionFromTensor, learnQualitiesFromRewards, learnQualitiesFromExperiences, extractQualityFromTensor } from "./tensorflow";
 import { createModel } from './model';
 import { Game } from './game';
 
@@ -45,17 +45,6 @@ describe('quality', () => {
 
 describe('model', () => {
 
-    it('should learn from reward', async () => {
-        // given
-        const model = createModel(3);
-        const board = '.ox .ox ...';
-        const game = Game.fromString(board);
-        // when
-        await learnQualityFromReward(model, game, 8, 100);
-        // then
-        // no crash
-    })
-
     it('should learn from rewards', async () => {
         // given
         const model = createModel(3);
@@ -65,42 +54,16 @@ describe('model', () => {
         await learnQualitiesFromRewards(
             model,
             [
-                { game: game1, action: 7, reward: 100},
-                { game: game2, action: 8, reward: 100},
+                { game: game1, action: 7, reward: 100, player: 'Player1'},
+                { game: game2, action: 8, reward: 100, player: 'Player1'},
             ]
         );
         // then
         // no crash
     })
 
-    it('should learn from next game', async () => {
-        // given
-        const model = createModel(3);
-        const game = Game.fromString('.ox ... ...');
-        const nextGame = Game.fromString('.ox .ox ...');
-        // when
-        await learnQualityFromNextGame(model, game, 8, nextGame);
-        // then
-        // no crash
-    })
 
-    it('should learn from next games', async () => {
-        // given
-        const model = createModel(3);
-        const game1 = Game.fromString('.ox ... ...');
-        const nextGame1 = Game.fromString('.ox .ox ...');
-        const game2 = Game.fromString('... .ox ...');
-        const nextGame2 = Game.fromString('... .ox .ox');
-        // when
-        await learnQualitiesFromNextGames(
-            model,
-            [
-                { game: game1, action: 7, nextGame: nextGame1},
-                { game: game2, action: 8, nextGame: nextGame2},
-            ]);
-        // then
-        // no crash
-    })
+    
 
     it('should learn from experiences', async () => {
         // given
@@ -117,12 +80,12 @@ describe('model', () => {
         await learnQualitiesFromExperiences(
             model,
             [
-                { game: game1, action: 7, reward: 100},
-                { game: game2, action: 8, reward: 100},
+                { game: game1, action: 7, reward: 100, player: 'Player1'},
+                { game: game2, action: 8, reward: 100, player: 'Player1'},
             ],
             [
-                { game: game1, action: 7, nextGame: nextGame1},
-                { game: game2, action: 8, nextGame: nextGame2},
+                { game: game1, action: 7, nextGame: nextGame1, player: 'Player1'},
+                { game: game2, action: 8, nextGame: nextGame2, player: 'Player1'},
             ]);
         // then
         // no crash

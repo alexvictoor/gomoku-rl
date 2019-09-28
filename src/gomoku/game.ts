@@ -73,8 +73,8 @@ export class Game {
         return player === 'Player1' ? 'x' : 'o';
     }
 
-    asNumberArray() {
-        const mark = this.getPlayerMark(this.currentPlayer);
+    asNumberArray(player: Player) {
+        const mark = this.getPlayerMark(player);
         const cellToNumber = (c: Cell) => {
             if (c === mark) {
                 return [0, 0, 1];

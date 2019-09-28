@@ -1,9 +1,6 @@
 import * as tf from '@tensorflow/tfjs';
-import { Game } from './game';
+import { Game, Player } from './game';
 
-export const gameToTensor = (game: Game): tf.Tensor2D => {
-    return tf.tensor(game.asNumberArray()).as2D(game.size, game.size);
-}
 
 export const createModel = (boardSize: number): tf.LayersModel => {
     const model = tf.sequential();
@@ -36,7 +33,7 @@ export const createModel = (boardSize: number): tf.LayersModel => {
     model.add(tf.layers.flatten());
     model.add(tf.layers.dense({ units: 100, activation: 'relu' }));
     model.add(tf.layers.dropout({ rate: 0.25 }));
-    model.add(tf.layers.dense({ units: boardSize * boardSize }));
+    model.add(tf.layers.dense({ units: boardSize * boardSize, activation: 'linear' }));
 
     model.compile({
         loss: "meanSquaredError",

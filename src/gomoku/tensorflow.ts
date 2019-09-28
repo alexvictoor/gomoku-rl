@@ -1,32 +1,32 @@
 import * as tf from '@tensorflow/tfjs';
-import { Game } from './game';
+import { Game, Player } from './game';
 import { RewardExperience, RegularExperience, Experience, isRewardExperience, isRegularExperience } from './experience';
 import { Tensor } from '@tensorflow/tfjs';
 
-export const game2Tensor = (game: Game): tf.Tensor => {
+export const game2Tensor = (game: Game, player: Player): tf.Tensor => {
     return tf.tidy(() => {
-        const boardArray = game.asNumberArray();
+        const boardArray = game.asNumberArray(player);
         return tf.tensor(boardArray).as3D(game.size, game.size, 3).expandDims();
     });
 }
 
-export const predictQualitiesForActions = (model: tf.LayersModel, game: Game): tf.Tensor => {
+export const predictQualitiesForActions = (model: tf.LayersModel, game: Game, player: Player): tf.Tensor => {
     return tf.tidy(() => {
-        const xs = game2Tensor(game);
+        const xs = game2Tensor(game, player);
         return (model.predict(xs) as tf.Tensor).flatten();
     });
 }
 
-export const predictBestAction = (model: tf.LayersModel, game: Game): Promise<number> => {
+export const predictBestAction = (model: tf.LayersModel, game: Game, player: Player): Promise<number> => {
    return extractBestActionFromTensor(
-       predictQualitiesForActions(model, game), 
+       predictQualitiesForActions(model, game, player), 
        game.whereToPlay()
     );
 }
 
-export const predictGameQuality = (model: tf.LayersModel, game: Game): Promise<number> => {
+export const predictGameQuality = (model: tf.LayersModel, game: Game, player: Player): Promise<number> => {
     return extractQualityFromTensor(
-        predictQualitiesForActions(model, game), 
+        predictQualitiesForActions(model, game, player), 
         game.whereToPlay()
      );
  }
@@ -57,20 +57,12 @@ export const extractQualityFromTensor = async (actions: tf.Tensor, allowedAction
     return Math.max(...qualities);
 }
 
-export const learnQualityFromReward = async (model: tf.LayersModel, game: Game, action: number, reward: number) => {
-    const qualitiesForActions = await predictQualitiesForActions(model, game).buffer();
-    qualitiesForActions.set(reward, action);
-    const ys = tf.tidy(() => qualitiesForActions.toTensor().expandDims());
-    const xs = game2Tensor(game);
-    await model.fit(xs, ys);
-}
-
 export const learnQualitiesFromRewards = async (model: tf.LayersModel, experiences: RewardExperience[]) => {
     const xsStack: Tensor[] = [];
     const ysStack: Tensor[] = [];
-    for (const { game, action, reward } of experiences) {
-        xsStack.push(game2Tensor(game).squeeze());
-        const qualitiesForActions = await predictQualitiesForActions(model, game).buffer();
+    for (const { game, action, reward, player } of experiences) {
+        xsStack.push(game2Tensor(game, player).squeeze());
+        const qualitiesForActions = await predictQualitiesForActions(model, game, player).buffer();
         qualitiesForActions.set(reward, action);
         ysStack.push( tf.tidy(() => qualitiesForActions.toTensor()));
     }
@@ -81,7 +73,7 @@ export const learnQualitiesFromRewards = async (model: tf.LayersModel, experienc
 }
 
 const ALPHA = 0.5;
-
+/*
 export const learnQualityFromNextGame = async (model: tf.LayersModel, game: Game, action: number, nextGame: Game) => {
     const qualitiesForActions = await predictQualitiesForActions(model, game).buffer();
     const nextGameQuality = await predictGameQuality(model, nextGame);
@@ -89,8 +81,8 @@ export const learnQualityFromNextGame = async (model: tf.LayersModel, game: Game
     const ys = tf.tidy(() => qualitiesForActions.toTensor().expandDims());
     const xs = game2Tensor(game);
     await model.fit(xs, ys);
-}
-export const learnQualitiesFromNextGames = async (model: tf.LayersModel, experiences: RegularExperience[]) => {
+}*/
+/*export const learnQualitiesFromNextGames = async (model: tf.LayersModel, experiences: RegularExperience[]) => {
     const xsStack: Tensor[] = [];
     const ysStack: Tensor[] = [];
     
@@ -106,16 +98,16 @@ export const learnQualitiesFromNextGames = async (model: tf.LayersModel, experie
     const ys = tf.stack(ysStack);
     await model.fit(xs, ys);
 }
-
+*/
 export const learnQualitiesFromExperiences = async (model: tf.LayersModel, rewardExperiences: RewardExperience[], regularExperiences: RegularExperience[]) => {
     
     const xs = tf.tidy(() => {
         const xsStack: Tensor[] = [];
-        for (const { game } of rewardExperiences) {
-            xsStack.push(game2Tensor(game).squeeze());
+        for (const { game, player } of rewardExperiences) {
+            xsStack.push(game2Tensor(game, player).squeeze());
         }
-        for (const { game } of regularExperiences) {
-            xsStack.push(game2Tensor(game).squeeze());
+        for (const { game, player } of regularExperiences) {
+            xsStack.push(game2Tensor(game, player).squeeze());
         }
         return tf.stack(xsStack);
     });
@@ -124,7 +116,7 @@ export const learnQualitiesFromExperiences = async (model: tf.LayersModel, rewar
     const nextGameQualityTensor = tf.tidy(() => {
         const xsStack: Tensor[] = [];
         for (const xp of regularExperiences) {
-            xsStack.push(game2Tensor(xp.nextGame).squeeze());
+            xsStack.push(game2Tensor(xp.nextGame, xp.player).squeeze());
         }
         const xs = tf.stack(xsStack);
         return model.predict(xs) as Tensor; 
@@ -139,14 +131,16 @@ export const learnQualitiesFromExperiences = async (model: tf.LayersModel, rewar
 
     const targetQualitiesBuffer = await (model.predict(xs) as Tensor).buffer();
     rewardExperiences.forEach(({action, reward}, index) => {
+        console.log('reward correction: ', targetQualitiesBuffer.get(index, action), reward)
         targetQualitiesBuffer.set(reward, index, action);
     });
     regularExperiences.forEach(({action}, index) => {
         const quality = ALPHA * nextGameQualities[index];
+        //console.log('regular correction: ', targetQualitiesBuffer.get(index + rewardExperiences.length, action), quality)
         targetQualitiesBuffer.set(quality, index + rewardExperiences.length, action);
     });
 
     const ys = targetQualitiesBuffer.toTensor();
 
-    await model.fit(xs, ys);
+    await model.fit(xs, ys, { epochs: 1 });
 }
