@@ -1,13 +1,14 @@
 import { stat } from "fs";
+import { Board } from "./board";
 
 export type Player = 'Player1' | 'Player2';
 export type GameStatus = 'In Progress' | 'Draw' | 'Player1 Wins' | 'Player2 Wins';
 type Cell = '.' | 'x' | 'o';
-type Board = Cell[];
+//type Board = Cell[];
 
 export type ChangeCallback = (update: Game) => void
 
-const emptyBoard = Array(19 * 19).fill('.');
+const emptyBoard = new Board(19);   //Array(19 * 19).fill('.');
 
 export class Game {
 
@@ -29,11 +30,11 @@ export class Game {
     }
 
     static fromString(raw: String) {
-        const board: Board = raw.split(' ').join('').split('') as any;
+        const board: Board = Board.parse(raw); //raw.split(' ').join('').split('') as any;
         const game = new Game(board);
 
         game.history = (
-            board.map((value, index) => ({ value, index }))
+            board.toString().split('').map((value, index) => ({ value, index }))
                 .filter(({ value }) => value !== '.')
                 .map(({ index }) => index)
         );
@@ -44,7 +45,7 @@ export class Game {
                 if (status !== 'In Progress') {
                     return status;
                 }
-                const mark = game.board[boardIndex];
+                const mark = game.board.getAt(boardIndex);
                 const player: Player = mark === 'x' ? 'Player1' : 'Player2';
                 return game.computeStatusAfterPlay(player, boardIndex);
             },
@@ -57,15 +58,15 @@ export class Game {
     }
 
     private clone() {
-        const clone = new Game([...this.board]);
+        const clone = new Game(this.board.clone());
         clone.currentPlayer = this.currentPlayer;
         clone.history = [...this.history];
         return clone;
     }
 
     private getCurrentPlayer() {
-        const nbX = this.board.filter(c => c === 'x').length;
-        const nbO = this.board.filter(c => c === 'o').length;
+        const nbX = this.board.toCellArray().filter(c => c === 'x').length;
+        const nbO = this.board.toCellArray().filter(c => c === 'o').length;
         return nbX > nbO ? 'Player2' : 'Player1';
     }
 
@@ -84,7 +85,7 @@ export class Game {
             }
             return [0, 1, 0];
         }
-        return this.board.map(cellToNumber);
+        return this.board.toCellArray().map(cellToNumber);
     }
 
     play(boardIndex: number) {
@@ -92,8 +93,9 @@ export class Game {
         if (!this.whereToPlay().includes(boardIndex)) {
             throw new Error(`Not a valid play: ${boardIndex} ${this.toString()}`);
         }
+        //console.log('play', {mark, boardIndex })
         const gameAfterPlay = this.clone();
-        gameAfterPlay.board[boardIndex] = mark;
+        gameAfterPlay.board.setAt(boardIndex, mark);
         gameAfterPlay.history.push(boardIndex);
         gameAfterPlay.status = gameAfterPlay.computeStatusAfterPlay(this.currentPlayer, boardIndex);
         gameAfterPlay.currentPlayer = this.currentPlayer === 'Player1' ? 'Player2' : 'Player1';
@@ -112,7 +114,7 @@ export class Game {
                 mark.repeat(index) + '.' + mark.repeat(3 - index) + '.'
             );*/
         }
-        const indexesToString = (indexes: number[]) => indexes.map(i => this.board[boardIndex + i]).join('');
+        const indexesToString = (indexes: number[]) => indexes.map(i => this.board.getAt(boardIndex + i)).join('');
         return (
             this.lines
                 .map(indexesToString)
@@ -124,7 +126,7 @@ export class Game {
     private computeStatusAfterPlay(player: Player, boardIndex: number): GameStatus {
         const mark: Cell = this.getPlayerMark(player);
         const winSequence = mark.repeat(5);
-        const indexesToString = (indexes: number[]) => indexes.map(i => this.board[boardIndex + i]).join('');
+        const indexesToString = (indexes: number[]) => indexes.map(i => this.board.getAt(boardIndex + i)).join('');
 
         const win = (
             this.lines
@@ -210,7 +212,7 @@ export class Game {
     }
 
     toString() {
-        return this.board.join('');
+        return this.board.toCellArray().join('');
     }
 }
 
