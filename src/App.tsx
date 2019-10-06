@@ -65,13 +65,13 @@ class GameComponent extends React.Component<any, any> {
         }
       ],
       stepNumber: 0,
-      player2Agent: new NaiveAgent(),
+      //player2Agent: new NaiveAgent('Player2'),
     };
     this.triggerPlayer2Agent = this.triggerPlayer2Agent.bind(this);
 
-    /*tf.loadLayersModel('http://localhost:3000/model/model.json').then(model => {
-      this.setState({ player2Agent: new DeepAgent(model, 0), })
-    });*/
+    tf.loadLayersModel('http://localhost:3000/model/model.json').then(model => {
+      this.setState({ player2Agent: new DeepAgent('Player2', model, 0), })
+    });
 
   }
 
