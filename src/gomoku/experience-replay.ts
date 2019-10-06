@@ -1,6 +1,6 @@
 import * as tf from '@tensorflow/tfjs';
 import { RewardExperience, RegularExperience } from "./experience";
-import { learnQualitiesFromExperiences } from './tensorflow';
+import { trainUsingExperiences, copyWeights } from './tensorflow';
 
 
 export class ExperienceReplayBuffer {
@@ -10,9 +10,11 @@ export class ExperienceReplayBuffer {
     private regularBuffer: RegularExperience[] = [];
     private largeRegularBuffer: RegularExperience[] = [];
    
+
     constructor(
-        private rewardBufferCapacity: number = 5000, 
-        private regularBufferCapacity: number = 100000
+        private targetModel: tf.LayersModel,
+        private rewardBufferCapacity: number = 500,
+        private regularBufferCapacity: number = 10000
     ) {
 
     }
@@ -25,25 +27,42 @@ export class ExperienceReplayBuffer {
         this.regularBuffer.push(xp);
     }
 
-    async learnFromExperiences(model: tf.LayersModel) {
+
+    learnFromExperiences(model: tf.LayersModel) {
         if (this.largeRegularBuffer.length > this.regularBufferCapacity) {
             this.largeRegularBuffer = this.largeRegularBuffer.slice(this.largeRegularBuffer.length - this.regularBufferCapacity);
         }
         if (this.largeRewardBuffer.length > this.rewardBufferCapacity) {
             this.largeRewardBuffer = this.largeRewardBuffer.slice(this.largeRewardBuffer.length - this.rewardBufferCapacity);
         }
-      
-        const rewardExperiences = [ ...this.rewardBuffer, ...this.largeRewardBuffer];
-        const regularExperiences = [ ...this.regularBuffer, ...this.largeRegularBuffer.slice(0, 2000)];
+
+        trainUsingExperiences(model, this.targetModel, this.rewardBuffer, this.regularBuffer);
+
+
+        for (let epoch = 0; epoch < 3; epoch++) {
+            for (let index = 0; index < 160; index = index + 16) {
+                const regularExperiences = this.largeRegularBuffer.slice(index, index + 16);
+                const rewardExperiences = this.largeRewardBuffer.slice(index, index + 32);
+                if (rewardExperiences.length === 0 || regularExperiences.length === 0) {
+                    break;
+                }
+                trainUsingExperiences(model, this.targetModel, rewardExperiences, regularExperiences);
+            }
+        }
+        copyWeights(model, this.targetModel);
+
         this.largeRewardBuffer.push(...this.rewardBuffer);
         this.largeRegularBuffer.push(...this.regularBuffer);
-        tf.util.shuffle(this.largeRewardBuffer);
-        tf.util.shuffle(this.largeRegularBuffer);
+
         this.rewardBuffer = [];
         this.regularBuffer = [];
-        await learnQualitiesFromExperiences(model, rewardExperiences, regularExperiences);
-        await learnQualitiesFromExperiences(model, rewardExperiences, regularExperiences);
-        await learnQualitiesFromExperiences(model, rewardExperiences, regularExperiences);
+
+        tf.util.shuffle(this.largeRewardBuffer);
+        tf.util.shuffle(this.largeRegularBuffer);
+
+
+        //await learnQualitiesFromExperiences(model, rewardExperiences, regularExperiences);
+        //await learnQualitiesFromExperiences(model, rewardExperiences, regularExperiences);
     }
 
 
