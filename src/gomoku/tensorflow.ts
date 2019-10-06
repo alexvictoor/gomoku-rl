@@ -1,7 +1,7 @@
 import * as tf from '@tensorflow/tfjs';
-import { Game, Player } from './game';
+import { Game, Player, getAdviceAction } from './game';
 import { RewardExperience, RegularExperience, Experience, isRewardExperience, isRegularExperience } from './experience';
-import { Tensor } from '@tensorflow/tfjs';
+import { Tensor, losses } from '@tensorflow/tfjs';
 
 export const game2Tensor = (game: Game, player: Player): tf.Tensor => {
     return tf.tidy(() => {
@@ -72,7 +72,7 @@ export const learnQualitiesFromRewards = async (model: tf.LayersModel, experienc
     console.log({ history })
 }
 
-const ALPHA = 0.5;
+const ALPHA = 0.99;
 /*
 export const learnQualityFromNextGame = async (model: tf.LayersModel, game: Game, action: number, nextGame: Game) => {
     const qualitiesForActions = await predictQualitiesForActions(model, game).buffer();
@@ -144,3 +144,136 @@ export const learnQualitiesFromExperiences = async (model: tf.LayersModel, rewar
 
     await model.fit(xs, ys, { epochs: 1 });
 }
+
+export const buildMask = (boardSize: number, allowedActions: number[]) => (
+    Array(boardSize * boardSize).fill(0).map((_, index) => (allowedActions.includes(index) ? 0 : -1000))
+);
+
+export const getCurrentQualities = (model: tf.LayersModel, rewardExperiences: RewardExperience[], regularExperiences: RegularExperience[]) => {
+    const xs = tf.tidy(() => {
+        const xsStack: Tensor[] = [];
+        for (const { game, player } of rewardExperiences) {
+            xsStack.push(game2Tensor(game, player).squeeze());
+        }
+        for (const { game, player } of regularExperiences) {
+            xsStack.push(game2Tensor(game, player).squeeze());
+        }
+        return tf.stack(xsStack);
+    });
+
+    const mask = tf.tidy(() => {
+        const maskStack: Tensor[] = [];
+        for (const { game, action } of rewardExperiences) {
+            maskStack.push(tf.tensor(buildMask(game.size, [action])));
+        }
+        for (const { game, action } of regularExperiences) {
+            maskStack.push(tf.tensor(buildMask(game.size, [action])));
+        }
+        return tf.stack(maskStack);
+    });
+
+    const predictions = model.predict(xs) as Tensor;
+
+    return predictions.add(mask).max(1);
+}
+
+export const getCurrentActionQualities = (model: tf.LayersModel, experiences: Experience[]) => {
+    const xs = tf.tidy(() => {
+        const xsStack: Tensor[] = [];
+        for (const { game, player } of experiences) {
+            xsStack.push(game2Tensor(game, player).squeeze());
+        }
+        return tf.stack(xsStack);
+    });
+
+    const mask = tf.tidy(() => {
+        const maskStack: Tensor[] = [];
+        for (const { game, action } of experiences) {
+            maskStack.push(tf.tensor(buildMask(game.size, [action])));
+        }
+        return tf.stack(maskStack);
+    });
+
+    const predictions = model.predict(xs) as Tensor;
+
+    return predictions.add(mask).max(1);
+}
+
+
+export const getNextGameQualities = (model: tf.LayersModel, regularExperiences: RegularExperience[]) => {
+    const xs = tf.tidy(() => {
+        const xsStack: Tensor[] = [];
+
+        for (const { nextGame, player } of regularExperiences) {
+            xsStack.push(game2Tensor(nextGame, player).squeeze());
+        }
+        return tf.stack(xsStack);
+    });
+
+    const mask = tf.tidy(() => {
+        const maskStack: Tensor[] = [];
+        for (const { nextGame } of regularExperiences) {
+            maskStack.push(tf.tensor(buildMask(nextGame.size, nextGame.whereToPlay())));
+        }
+        return tf.stack(maskStack);
+    });
+
+    const predictions = model.predict(xs) as Tensor;
+
+    return predictions.add(mask).max(1);
+}
+
+export const computeRewardTargets = (rewardExperiences: RewardExperience[]) => {
+    return tf.tensor(
+        rewardExperiences.map(xp => xp.reward)
+    );
+}
+
+export const computeRegularTargets = (model: tf.LayersModel, regularExperiences: RegularExperience[]) => {
+    const nextGameQualities = getNextGameQualities(model, regularExperiences);
+    return nextGameQualities.mul(ALPHA);
+}
+
+
+const buildLossFunction = (model: tf.LayersModel, targetModel: tf.LayersModel, rewardExperiences: RewardExperience[], regularExperiences: RegularExperience[]) => {
+
+    return () => tf.tidy(() => {
+
+        const currentRewardQualities = getCurrentActionQualities(model, rewardExperiences);
+        const currentRegularQualities = getCurrentActionQualities(model, regularExperiences);
+        //currentRegularQualities.print();
+
+        const targetRewardQualities = computeRewardTargets(rewardExperiences);
+        const targetRegularQualities = computeRegularTargets(targetModel, regularExperiences);
+
+        const loss = tf.losses.meanSquaredError(
+            targetRewardQualities.concat(targetRegularQualities), 
+            currentRewardQualities.concat(currentRegularQualities)
+        ) as tf.Tensor<tf.Rank.R0>;
+        //targetRewardQualities.concat(targetRegularQualities).print();
+        //currentRewardQualities.concat(currentRegularQualities).print();
+        loss.print();
+        return loss;
+    });
+}
+
+const optimizer = tf.train.adam(); //sgd(0.01);
+
+export const trainUsingExperiences = (model: tf.LayersModel, targetModel: tf.LayersModel, rewardExperiences: RewardExperience[], regularExperiences: RegularExperience[]) => {
+
+    if (rewardExperiences.length === 0 || regularExperiences.length === 0){
+        return;
+    }
+    
+    const lossFunction = buildLossFunction(model, targetModel, rewardExperiences, regularExperiences);
+    const grads =
+        tf.variableGrads(lossFunction, model.getWeights() as any);
+    optimizer.applyGradients(grads.grads as any);
+    tf.dispose(grads); 
+    //optimizer.dispose();
+}
+
+export const copyWeights = (src: tf.LayersModel, dst: tf.LayersModel) => {
+    dst.setWeights(src.getWeights());
+}
+

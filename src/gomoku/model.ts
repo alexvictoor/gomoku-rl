@@ -13,7 +13,7 @@ export const createModel = (boardSize: number): tf.LayersModel => {
         activation: 'relu',
         inputShape: [boardSize, boardSize, 3]
     }));
-    model.add(tf.layers.batchNormalization());
+    //model.add(tf.layers.batchNormalization());
     model.add(tf.layers.conv2d({
         name: 'lololo',
         filters: 64,
@@ -22,7 +22,7 @@ export const createModel = (boardSize: number): tf.LayersModel => {
         padding: 'same',
         activation: 'relu'
     }));
-    model.add(tf.layers.batchNormalization());
+    //model.add(tf.layers.batchNormalization());
     model.add(tf.layers.conv2d({
         filters: 128,
         kernelSize: 3,
@@ -32,13 +32,13 @@ export const createModel = (boardSize: number): tf.LayersModel => {
     }));
     model.add(tf.layers.flatten());
     model.add(tf.layers.dense({ units: 100, activation: 'relu' }));
-    model.add(tf.layers.dropout({ rate: 0.25 }));
-    model.add(tf.layers.dense({ units: boardSize * boardSize, activation: 'linear' }));
+    //model.add(tf.layers.dropout({ rate: 0.25 }));
+    model.add(tf.layers.dense({ units: boardSize * boardSize, activation: 'tanh' }));
 
-    model.compile({
+    /*model.compile({
         loss: "meanSquaredError",
         optimizer: "adam",
-    });
+    });*/
 
     return model;
 }
